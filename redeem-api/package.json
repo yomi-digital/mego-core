@@ -1,0 +1,17 @@
+{
+  "name": "aws-node-express-dynamodb-api",
+  "version": "1.0.0",
+  "description": "",
+  "dependencies": {
+    "@truffle/hdwallet-provider": "^1.5.0",
+    "express": "^4.17.1",
+    "mailgun-js": "^0.22.0",
+    "serverless-http": "^2.7.0",
+    "web3": "^1.6.0"
+  },
+  "devDependencies": {
+    "serverless": "^2.61.0",
+    "serverless-dynamodb-local": "^0.2.40",
+    "serverless-offline": "^8.2.0"
+  }
+}
