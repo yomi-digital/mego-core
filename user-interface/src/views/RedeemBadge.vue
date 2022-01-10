@@ -10,7 +10,7 @@
       <div v-if="!loading && redeemed">
         <h3 class="title is-3">You've redeemed your badge!</h3>
         <p>
-          You've redeemed your badge yet, you can see it on OpenSea at:
+          You've redeemed your badge yet, you can see it on
           <a
             :href="
               'https://opensea.io/assets/matic/' +
@@ -19,14 +19,8 @@
               $route.params.tokenId
             "
             target="_blank"
-          >
-            {{
-              "https://opensea.io/assets/matic/" +
-              badgeContract +
-              "/" +
-              $route.params.tokenId
-            }}
-          </a>
+            >OpenSea</a
+          >!
         </p>
       </div>
       <div v-if="!loading && !redeemed">
@@ -90,7 +84,7 @@ export default {
         startime: "",
         endtime: "",
       },
-      pendingTx: ""
+      pendingTx: "",
     };
   },
   methods: {
@@ -100,7 +94,7 @@ export default {
         app.isRedeeming = true;
         const nftContract = new app.web3.eth.Contract(ABI, app.badgeContract);
         try {
-          const gasPrice = await app.web3.eth.getGasPrice() * 2
+          const gasPrice = (await app.web3.eth.getGasPrice()) * 2;
           await nftContract.methods
             .claim(app.$route.params.tokenId, "")
             .send({

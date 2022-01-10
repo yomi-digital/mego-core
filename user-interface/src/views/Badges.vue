@@ -7,7 +7,7 @@
     </div>
     <!-- LIST VIEW -->
     <div class="row" v-if="section === 'list'" style="margin-top: 80px">
-      <div v-if="!loading && created.length === 0">
+      <div v-if="!loading && created.length === 0 && received.length === 0">
         <h3 class="title is-3">Introduction to Badges</h3>
         <p>
           Thanks to badges you're able to create "POAP" like NFTs, which can be
@@ -25,7 +25,10 @@
           >REGISTER YOUR FIRST EVENT</b-button
         >
       </div>
-      <div v-if="!loading && created.length > 0" style="text-align: left">
+      <div
+        v-if="!loading && (created.length > 0 || received.length > 0)"
+        style="text-align: left"
+      >
         <h3 class="title is-3">
           Your events
           <a href="#" v-on:click="section = 'new'"
@@ -110,6 +113,45 @@
             </tr>
           </tbody>
         </table>
+        <div v-if="created.length === 0" style="text-align: center">
+          You haven't created any badge yet.
+        </div>
+        <hr />
+      </div>
+      <div v-if="!loading && received.length > 0" style="text-align: left">
+        <h3 class="title is-3">Received badges</h3>
+        <hr />
+        <div
+          v-for="event in received"
+          v-bind:key="event.tokenId"
+          class="name"
+          style="
+            width: 30%;
+            margin: 1.5%;
+            display: inline-block;
+            border: 1px solid #eee;
+            border-radius: 5px;
+          "
+        >
+          <img
+            :src="event.image.replace('ipfs://', ipfsEndpoint)"
+            width="100%"
+          /><br />
+          <div style="padding: 15px">
+            {{ event.name }}
+            <a
+              :href="
+                'https://opensea.io/assets/matic/' +
+                badgeContract +
+                '/' +
+                event.tokenId
+              "
+              target="_blank"
+              style="float: right"
+              ><b-icon icon="share"></b-icon
+            ></a>
+          </div>
+        </div>
       </div>
     </div>
     <!-- NEW VIEW -->
@@ -238,7 +280,9 @@
       </div>
       <hr />
       Use following link to allow addresses redeem their token:<br />
-      <a :href="'https://polygonme.xyz/#/redeem/' + selected.tokenId" target="_blank"
+      <a
+        :href="'https://polygonme.xyz/#/redeem/' + selected.tokenId"
+        target="_blank"
         >https://polygonme.xyz/#/redeem/{{ selected.tokenId }}</a
       >
     </div>
@@ -334,6 +378,7 @@ export default {
       isWhitelisting: false,
       axios: axios,
       created: [],
+      received: [],
       section: "list",
       event: {
         name: "",
@@ -401,7 +446,7 @@ export default {
         const normalizedStart = parseInt(app.event.startime.getTime() / 1000);
         const normalizedEnd = parseInt(app.event.endtime.getTime() / 1000);
         try {
-          const gasPrice = await app.web3.eth.getGasPrice() * 2
+          const gasPrice = (await app.web3.eth.getGasPrice()) * 2;
           await nftContract.methods
             .prepare(
               normalizedStart.toString(),
@@ -430,7 +475,7 @@ export default {
         app.isMinting = true;
         const nftContract = new app.web3.eth.Contract(ABI, app.badgeContract);
         try {
-          const gasPrice = await app.web3.eth.getGasPrice() * 2
+          const gasPrice = (await app.web3.eth.getGasPrice()) * 2;
           await nftContract.methods
             .mint(app.selected.tokenId, app.toMint)
             .send({
@@ -462,7 +507,7 @@ export default {
               .call();
             if (parseInt(check) === 0) {
               app.whatSending = receiver;
-              const gasPrice = await app.web3.eth.getGasPrice() * 2
+              const gasPrice = (await app.web3.eth.getGasPrice()) * 2;
               await nftContract.methods
                 .transferBadge(receiver, "", app.selected.tokenId)
                 .send({
@@ -492,7 +537,7 @@ export default {
         app.isWhitelisting = true;
         const nftContract = new app.web3.eth.Contract(ABI, app.badgeContract);
         try {
-          const gasPrice = await app.web3.eth.getGasPrice() * 2
+          const gasPrice = (await app.web3.eth.getGasPrice()) * 2;
           await nftContract.methods
             .manageAddressWhitelist(
               app.selected.tokenId,
@@ -552,6 +597,16 @@ export default {
         metadata.data.tokenCID = tokenCID;
         metadata.data.balance = balance;
         app.created.push(metadata.data);
+      }
+    }
+    const received = await nftContract.methods.received(app.account).call();
+    if (received.length > 0) {
+      for (let k in received) {
+        const tokenCID = await nftContract.methods.tokenCID(received[k]).call();
+        const metadata = await app.axios.get(app.ipfsEndpoint + tokenCID);
+        metadata.data.tokenId = created[k];
+        metadata.data.tokenCID = tokenCID;
+        app.received.push(metadata.data);
       }
     }
     app.loading = false;
