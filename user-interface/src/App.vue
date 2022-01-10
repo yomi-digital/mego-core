@@ -38,7 +38,7 @@
           <b-navbar-item href="/#/"> Register </b-navbar-item>
           <b-navbar-item href="/#/names"> My Names </b-navbar-item>
           <b-navbar-item href="/#/pgp"> PGP </b-navbar-item>
-          <b-navbar-item href="/#/redeem"> Redeem </b-navbar-item>
+          <b-navbar-item href="/#/badges"> Badges </b-navbar-item>
         </template>
 
         <template #end>
@@ -78,7 +78,7 @@ export default {
       account: "",
       web3: "",
       balance: 0,
-      connecting: false
+      connecting: false,
     };
   },
   methods: {
@@ -132,7 +132,7 @@ export default {
           },
         ],
       });
-      location.reload()
+      location.reload();
     },
     async disconnect() {
       const app = this;
@@ -141,7 +141,7 @@ export default {
       app.balance = 0;
       location.reload();
     },
-  }
+  },
 };
 </script>
 
@@ -182,5 +182,8 @@ export default {
   .no-mobile {
     display: none !important;
   }
+}
+.upload, .upload-draggable {
+  width: 100%!important;
 }
 </style>
