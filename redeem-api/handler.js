@@ -306,13 +306,8 @@ app.post("/pending", async function (req, res) {
   const { secret } = req.body;
   if (secret === SECRET) {
     try {
-      dynamoDbClient.get({
-        TableName: USERS_TABLE,
-        Key: {
-          isEvent: true,
-          redeemed: false,
-          verified: true
-        },
+      dynamoDbClient.query({
+        TableName: USERS_TABLE
       }, function (err, data) {
         if (err) {
           res.status(500).json({ error: "Something goes wrong, please retry", error: err });
