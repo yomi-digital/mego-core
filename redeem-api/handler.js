@@ -132,6 +132,36 @@ function createVerificationRequest(id) {
   })
 }
 
+function returnPendingEvents() {
+  return new Promise(response => {
+    try {
+      dynamoDbClient.scan({
+        TableName: USERS_TABLE,
+        FilterExpression: "verified = :isverified and isEvent = :isevent and redeemed = :isredeemed",
+        ExpressionAttributeValues: {
+          ":isverified": true,
+          ":isevent": true,
+          ":isredeemed": false
+        }
+      }, function (err, data) {
+        if (err) {
+          res.status(500).json({ error: "Something goes wrong, please retry", error: err });
+        } else {
+          console.log("Scan succeeded.");
+          let pending = []
+          data.Items.forEach(function (item) {
+            pending.push(item)
+          });
+          response(pending)
+        }
+      })
+    } catch (e) {
+      console.log(e);
+      res.status(500).json({ error: "Something goes wrong, please retry" });
+    }
+  })
+}
+
 app.get("/users/:userId", async function (req, res) {
   const params = {
     TableName: USERS_TABLE,
@@ -305,32 +335,8 @@ app.post("/claim/:claimstring", async function (req, res) {
 app.post("/pending", async function (req, res) {
   const { secret } = req.body;
   if (secret === SECRET) {
-    try {
-      dynamoDbClient.scan({
-        TableName: USERS_TABLE,
-        FilterExpression: "verified = :isverified and isEvent = :isevent and redeemed = :isredeemed",
-        ExpressionAttributeValues: {
-          ":isverified": true,
-          ":isevent": true,
-          ":isredemeed": false
-        }
-      }, function (err, data) {
-        if (err) {
-          res.status(500).json({ error: "Something goes wrong, please retry", error: err });
-        } else {
-          // print all the movies
-          console.log("Scan succeeded.");
-          let pending = []
-          data.Items.forEach(function (item) {
-            pending.push(item)
-          });
-          res.status(200).json(pending)
-        }
-      })
-    } catch (e) {
-      console.log(e);
-      res.status(500).json({ error: "Something goes wrong, please retry" });
-    }
+    let pending = await returnPendingEvents()
+    res.send(pending)
   } else {
     res.status(500).json({ error: "Unauthorized" });
   }
@@ -405,34 +411,23 @@ app.use((req, res, next) => {
 
 /*
 setInterval(async function () {
-  dynamoDbClient.get({
-    TableName: USERS_TABLE,
-    Key: {
-      redeemed: false,
-      verified: true
-    },
-  }, function (err, data) {
-    if (err) { 
-      console.log(err); 
-    } else { 
-      console.log(data); 
-      try {
-        let nonce = await web3Instance.eth.getTransactionCount(process.env.PROXY_ADDRESS)
-        const transfer = await contract.methods
-          .transferBadge(req.body.address, "", nft_type)
-          .send({
-            from: process.env.PROXY_ADDRESS,
-            nonce: nonce,
-            gasPrice: "200000000000",
-            gas: "1000000"
-          })
-        res.status(200).json({ message: "Transfer successful! Your badge is on the way, please check metamask!", transactionHash: transfer.transactionHash });
-      } catch (e) {
-        res.status(500).json({ error: "Transfer failed, please retry." });
-      }
+  let pending = await returnPendingEvents()
+  for (let k in pending) {
+    try {
+      let nonce = await web3Instance.eth.getTransactionCount(process.env.PROXY_ADDRESS)
+      const transfer = await contract.methods
+        .transferBadge(req.body.address, "", nft_type)
+        .send({
+          from: process.env.PROXY_ADDRESS,
+          nonce: nonce,
+          gasPrice: "200000000000",
+          gas: "1000000"
+        })
+      res.status(200).json({ message: "Transfer successful! Your badge is on the way, please check metamask!", transactionHash: transfer.transactionHash });
+    } catch (e) {
+      res.status(500).json({ error: "Transfer failed, please retry." });
     }
-  });
+  }
 }, 120000)
-*/
-
+/*
 module.exports.handler = serverless(app);
