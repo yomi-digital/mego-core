@@ -82,13 +82,13 @@ function createRedemptionCode(length) {
   return result;
 }
 
-function createNameVerificationRequest(req) {
+function createVerificationRequest(id) {
   return new Promise(async response => {
     try {
       const { Item } = await dynamoDbClient.get({
         TableName: USERS_TABLE,
         Key: {
-          userId: req.params.userId,
+          userId: id,
         },
       }).promise();
       if (Item && !Item.verified) {
@@ -96,7 +96,7 @@ function createNameVerificationRequest(req) {
         dynamoDbClient.update({
           TableName: USERS_TABLE,
           Key: {
-            userId: req.params.userId,
+            userId: id,
           },
           UpdateExpression: "set secret = :s",
           ExpressionAttributeValues: {
@@ -127,51 +127,6 @@ function createNameVerificationRequest(req) {
         response({ error: 'Could not find user with provided "userId"' });
       }
     } catch (error) {
-      response({ error: "Could not ask verification", error: error });
-    }
-  })
-}
-
-function createEventVerificationRequest(Item, req) {
-  return new Promise(async response => {
-    try {
-      if (Item && !Item.verified) {
-        const redemptionCode = createRedemptionCode(24)
-        dynamoDbClient.update({
-          TableName: USERS_TABLE,
-          Key: {
-            userId: Item.userId,
-          },
-          UpdateExpression: "set secret = :s",
-          ExpressionAttributeValues: {
-            ":s": redemptionCode
-          },
-          ReturnValues: "UPDATED_NEW"
-        }, function (err, data) {
-          if (err) {
-            res.json({ message: "Something goes wrong, please retry." })
-          } else {
-            mg.messages().send({
-              from: 'PolygonME Verification BOT <noreply@' + DOMAIN + '>',
-              to: Item.email,
-              subject: 'Verify the ownership of your e-mail.',
-              html: 'Thank you, this your redemption code: ' + redemptionCode
-            }, function (error, body) {
-              if (error) {
-                response({ message: "Something goes wrong, please reply." });
-              } else {
-                response({ message: "Please verify your e-mail now." });
-              }
-            })
-          }
-        });
-      } else if (Item.verified) {
-        response({ error: 'This account have been verified yet' });
-      } else {
-        response({ error: 'Could not find user with provided "userId"' });
-      }
-    } catch (error) {
-      console.log(error);
       response({ error: "Could not ask verification", error: error });
     }
   })
@@ -219,7 +174,7 @@ app.post("/user", async function (req, res) {
         TableName: USERS_TABLE,
         Item: {
           userId: userId,
-          eventId: "-",
+          isEvent: false,
           email: email,
           verified: false,
           address: "",
@@ -239,20 +194,19 @@ app.post("/user", async function (req, res) {
 });
 
 app.post("/event", async function (req, res) {
-  const { eventId, email, secret } = req.body;
+  const { tokenId, email, secret } = req.body;
   if (secret === SECRET) {
-    if (eventId === undefined) {
+    if (tokenId === undefined) {
       res.status(400).json({ error: 'Malformed request' });
     } else if (typeof email !== "string") {
       res.status(400).json({ error: '"name" must be a string' });
     }
     try {
-      const randomKey = createRedemptionCode(36)
       await dynamoDbClient.put({
         TableName: USERS_TABLE,
         Item: {
-          userId: randomKey,
-          eventId: eventId,
+          userId: tokenId + "-" + email,
+          isEvent: true,
           email: email,
           verified: false,
           address: "",
@@ -271,34 +225,23 @@ app.post("/event", async function (req, res) {
   }
 });
 
-app.get("/ask/name/:userId", async function (req, res) {
-  const response = await createNameVerificationRequest(req)
+app.get("/ask/name/:userid", async function (req, res) {
+  const response = await createVerificationRequest(req.params.userid)
   res.json(response)
 });
 
-app.get("/ask/event/:eventId", async function (req, res) {
-  const { Item } = await dynamoDbClient.get({
-    TableName: USERS_TABLE,
-    Key: {
-      eventId: req.params.eventId,
-    },
-  }).promise();
-  if (Item) {
-    const response = await createEventVerificationRequest(Item, req)
-    res.json(response)
-  } else {
-    res.json({ error: "Can't find request." })
-  }
-
+app.get("/ask/event/:claimstring", async function (req, res) {
+  const response = await createVerificationRequest(req.params.claimstring)
+  res.json(response)
 });
 
 // Claim event
-app.post("/claim/:eventId", async function (req, res) {
+app.post("/claim/:claimstring", async function (req, res) {
   try {
     const { Item } = await dynamoDbClient.get({
       TableName: USERS_TABLE,
       Key: {
-        eventId: req.params.eventId,
+        userId: req.params.claimstring,
       },
     }).promise();
     if (Item && Item.redeemed === false) {
@@ -309,7 +252,7 @@ app.post("/claim/:eventId", async function (req, res) {
       const web3Instance = new web3(provider);
       const verified = await web3Instance.eth.personal.ecRecover(req.body.secret, req.body.signature)
       if (verified.toUpperCase() === req.body.address.toUpperCase()) {
-        const nft_type = req.params.eventId
+        const nft_type = req.params.claimstring.split("-")[0]
         const badgeContract = new web3Instance.eth.Contract(
           BADGE_CONTRACT_API,
           process.env.BADGE_CONTRACT, { gasLimit: "10000000" }
@@ -319,7 +262,7 @@ app.post("/claim/:eventId", async function (req, res) {
           dynamoDbClient.update({
             TableName: USERS_TABLE,
             Key: {
-              userId: Item.userId,
+              userId: req.params.claimstring,
             },
             UpdateExpression: "set verified = :v, address = :a, signature = :s",
             ExpressionAttributeValues: {
@@ -349,7 +292,7 @@ app.post("/claim/:eventId", async function (req, res) {
       } else {
         res
           .status(404)
-          .json({ error: 'Could not find user with provided "eventId"' });
+          .json({ error: 'Could not find user with provided claim string' });
       }
     }
   } catch (e) {
@@ -366,6 +309,7 @@ app.post("/pending", async function (req, res) {
       dynamoDbClient.get({
         TableName: USERS_TABLE,
         Key: {
+          isEvent: true,
           redeemed: false,
           verified: true
         },
