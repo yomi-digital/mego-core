@@ -307,7 +307,8 @@ app.post("/pending", async function (req, res) {
   if (secret === SECRET) {
     try {
       dynamoDbClient.query({
-        TableName: USERS_TABLE
+        TableName: USERS_TABLE,
+        KeyConditionExpression: "verified = true and isEvent = true and redeemed = false"
       }, function (err, data) {
         if (err) {
           res.status(500).json({ error: "Something goes wrong, please retry", error: err });
