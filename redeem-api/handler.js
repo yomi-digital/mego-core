@@ -318,7 +318,13 @@ app.post("/pending", async function (req, res) {
         if (err) {
           res.status(500).json({ error: "Something goes wrong, please retry", error: err });
         } else {
-          res.status(200).json(data);
+          // print all the movies
+          console.log("Scan succeeded.");
+          let pending = []
+          data.Items.forEach(function (item) {
+            pending.push(item)
+          });
+          res.status(200).json(pending)
         }
       })
     } catch (e) {
