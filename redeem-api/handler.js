@@ -162,6 +162,28 @@ function returnPendingEvents() {
   })
 }
 
+function setRedeemed(item) {
+  return new Promise(response => {
+    dynamoDbClient.update({
+      TableName: USERS_TABLE,
+      Key: {
+        userId: req.params.userId,
+      },
+      UpdateExpression: "set redeemed = :r",
+      ExpressionAttributeValues: {
+        ":r": true
+      },
+      ReturnValues: "UPDATED_NEW"
+    }, function (err, data) {
+      if (err) {
+        response(false)
+      } else {
+        response(true)
+      }
+    })
+  })
+}
+
 app.get("/users/:userId", async function (req, res) {
   const params = {
     TableName: USERS_TABLE,
@@ -409,26 +431,38 @@ app.use((req, res, next) => {
   });
 });
 
-/*
+let isSending = false
 setInterval(async function () {
-  let pending = await returnPendingEvents()
-  for (let k in pending) {
-    try {
-      let nonce = await web3Instance.eth.getTransactionCount(process.env.PROXY_ADDRESS)
-      const transfer = await contract.methods
-        .transferBadge(req.body.address, "", nft_type)
-        .send({
-          from: process.env.PROXY_ADDRESS,
-          nonce: nonce,
-          gasPrice: "200000000000",
-          gas: "1000000"
-        })
-      res.status(200).json({ message: "Transfer successful! Your badge is on the way, please check metamask!", transactionHash: transfer.transactionHash });
-    } catch (e) {
-      res.status(500).json({ error: "Transfer failed, please retry." });
+  if (!isSending) {
+    isSending = false
+    let pending = await returnPendingEvents()
+    for (let k in pending) {
+      try {
+        console.log('Sending NFT to ' + pending[k].address)
+        const nft_type = pending[k].userId.split('-')[0]
+        const provider = new HDWalletProvider(
+          process.env.PROXY_MNEMONIC,
+          process.env.POLYGON_PROVIDER
+        );
+        const web3Instance = new web3(provider)
+        let nonce = await web3Instance.eth.getTransactionCount(process.env.PROXY_ADDRESS)
+        await contract.methods
+          .transferBadge(pending[k].address, "", nft_type)
+          .send({
+            from: process.env.PROXY_ADDRESS,
+            nonce: nonce,
+            gasPrice: "200000000000",
+            gas: "1000000"
+          })
+        console.log('Updating record...')
+        await setRedeemed(pending[k])
+        console.log("--> NFT sent correctly to " + pending[k].address)
+      } catch (e) {
+        console.log('Transfer failed')
+      }
     }
+    isSending = true
   }
 }, 120000)
-*/
 
 module.exports.handler = serverless(app);
