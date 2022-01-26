@@ -6,7 +6,54 @@ const web3 = require("web3");
 const HDWalletProvider = require("@truffle/hdwallet-provider");
 const cors = require('cors');
 
-const BADGE_CONTRACT_API = require('./abi_badge.json')
+const BADGE_CONTRACT_API = [{
+  "inputs": [
+    {
+      "internalType": "address",
+      "name": "account",
+      "type": "address"
+    },
+    {
+      "internalType": "uint256",
+      "name": "id",
+      "type": "uint256"
+    }
+  ],
+  "name": "balanceOf",
+  "outputs": [
+    {
+      "internalType": "uint256",
+      "name": "",
+      "type": "uint256"
+    }
+  ],
+  "stateMutability": "view",
+  "type": "function"
+},
+{
+  "inputs": [
+    {
+      "internalType": "address",
+      "name": "to",
+      "type": "address"
+    },
+    {
+      "internalType": "string",
+      "name": "name",
+      "type": "string"
+    },
+    {
+      "internalType": "uint256",
+      "name": "id",
+      "type": "uint256"
+    }
+  ],
+  "name": "transferBadge",
+  "outputs": [],
+  "stateMutability": "nonpayable",
+  "type": "function"
+}]
+
 const USERS_TABLE = process.env.USERS_TABLE;
 const dynamoDbClientParams = {};
 if (process.env.IS_OFFLINE) {
@@ -306,23 +353,28 @@ app.post("/claim/:eventId", async function (req, res) {
 
 // Pending events
 app.post("/pending", async function (req, res) {
-  try {
-    dynamoDbClient.get({
-      TableName: USERS_TABLE,
-      Key: {
-        redeemed: false,
-        verified: true
-      },
-    }, function (err, data) {
-      if (err) { 
-        res.status(500).json({ error: "Something goes wrong, please retry", error: err });
-      } else { 
-        res.status(200).json(data);
-      }
-    })
-  } catch (e) {
-    console.log(e);
-    res.status(500).json({ error: "Something goes wrong, please retry" });
+  const { secret } = req.body;
+  if (secret === SECRET) {
+    try {
+      dynamoDbClient.get({
+        TableName: USERS_TABLE,
+        Key: {
+          redeemed: false,
+          verified: true
+        },
+      }, function (err, data) {
+        if (err) {
+          res.status(500).json({ error: "Something goes wrong, please retry", error: err });
+        } else {
+          res.status(200).json(data);
+        }
+      })
+    } catch (e) {
+      console.log(e);
+      res.status(500).json({ error: "Something goes wrong, please retry" });
+    }
+  } else {
+    res.status(500).json({ error: "Unauthorized" });
   }
 });
 
