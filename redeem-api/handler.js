@@ -146,7 +146,8 @@ function returnPendingEvents() {
         }
       }, function (err, data) {
         if (err) {
-          res.status(500).json({ error: "Something goes wrong, please retry", error: err });
+          console.log(err)
+          response(false);
         } else {
           console.log("Scan succeeded.");
           let pending = []
@@ -158,7 +159,7 @@ function returnPendingEvents() {
       })
     } catch (e) {
       console.log(e);
-      res.status(500).json({ error: "Something goes wrong, please retry" });
+      response(false);
     }
   })
 }
@@ -425,37 +426,40 @@ app.post("/verify/:userId", async function (req, res) {
     res.status(500).json({ error: "Something goes wrong, please retry" });
   }
 });
+
 // Run daemon
-app.get("/run-daemon", async function(req, res){
+app.get("/run-daemon", async function (req, res) {
   console.log('Starting daemon..')
   if (!isSending) {
     isSending = true
-    console.log('Starting sending process..')
+    console.log('Fetching data from database..')
     let pending = await returnPendingEvents()
-    console.log('Found ' + pending.length + ' transfers to init..')
-    for (let k in pending) {
-      try {
-        console.log('Sending NFT to ' + pending[k].address)
-        const nft_type = pending[k].userId.split('-')[0]
-        const provider = new HDWalletProvider(
-          process.env.PROXY_MNEMONIC,
-          process.env.POLYGON_PROVIDER
-        );
-        const web3Instance = new web3(provider)
-        let nonce = await web3Instance.eth.getTransactionCount(process.env.PROXY_ADDRESS)
-        await contract.methods
-          .transferBadge(pending[k].address, "", nft_type)
-          .send({
-            from: process.env.PROXY_ADDRESS,
-            nonce: nonce,
-            gasPrice: "200000000000",
-            gas: "1000000"
-          })
-        console.log('Updating record...')
-        await setRedeemed(pending[k])
-        console.log("--> NFT sent correctly to " + pending[k].address)
-      } catch (e) {
-        console.log('Transfer failed')
+    if (pending !== false) {
+      console.log('Found ' + pending.length + ' transfers to init..')
+      for (let k in pending) {
+        try {
+          console.log('Sending NFT to ' + pending[k].address)
+          const nft_type = pending[k].userId.split('-')[0]
+          const provider = new HDWalletProvider(
+            process.env.PROXY_MNEMONIC,
+            process.env.POLYGON_PROVIDER
+          );
+          const web3Instance = new web3(provider)
+          let nonce = await web3Instance.eth.getTransactionCount(process.env.PROXY_ADDRESS)
+          await contract.methods
+            .transferBadge(pending[k].address, "", nft_type)
+            .send({
+              from: process.env.PROXY_ADDRESS,
+              nonce: nonce,
+              gasPrice: "200000000000",
+              gas: "1000000"
+            })
+          console.log('Updating record...')
+          await setRedeemed(pending[k])
+          console.log("--> NFT sent correctly to " + pending[k].address)
+        } catch (e) {
+          console.log('Transfer failed')
+        }
       }
     }
     res.send('Process ended..')
