@@ -433,9 +433,12 @@ app.use((req, res, next) => {
 
 let isSending = false
 setInterval(async function () {
+  console.log('Starting daemon..')
   if (!isSending) {
-    isSending = false
+    isSending = true
+    console.log('Starting sending process..')
     let pending = await returnPendingEvents()
+    console.log('Found ' + pending.length + ' transfers to init..')
     for (let k in pending) {
       try {
         console.log('Sending NFT to ' + pending[k].address)
@@ -461,7 +464,9 @@ setInterval(async function () {
         console.log('Transfer failed')
       }
     }
-    isSending = true
+    isSending = false
+  } else {
+    console.log('Daemon is busy..')
   }
 }, 120000)
 
