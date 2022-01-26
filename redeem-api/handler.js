@@ -425,8 +425,8 @@ app.post("/verify/:userId", async function (req, res) {
     res.status(500).json({ error: "Something goes wrong, please retry" });
   }
 });
-
-app.get("/daemon", async function(req, res){
+// Run daemon
+app.get("/run-daemon", async function(req, res){
   console.log('Starting daemon..')
   if (!isSending) {
     isSending = true
