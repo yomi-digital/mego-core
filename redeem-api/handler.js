@@ -169,7 +169,7 @@ function setRedeemed(item) {
     dynamoDbClient.update({
       TableName: USERS_TABLE,
       Key: {
-        userId: req.params.userId,
+        userId: item.userId,
       },
       UpdateExpression: "set redeemed = :r",
       ExpressionAttributeValues: {
