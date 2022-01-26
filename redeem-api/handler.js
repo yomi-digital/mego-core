@@ -127,8 +127,7 @@ function createNameVerificationRequest(req) {
         response({ error: 'Could not find user with provided "userId"' });
       }
     } catch (error) {
-      console.log(error);
-      response({ error: "Could not ask verification" });
+      response({ error: "Could not ask verification", error: error });
     }
   })
 }
@@ -179,7 +178,7 @@ function createEventVerificationRequest(req) {
       }
     } catch (error) {
       console.log(error);
-      response({ error: "Could not ask verification" });
+      response({ error: "Could not ask verification", error: error });
     }
   })
 }
