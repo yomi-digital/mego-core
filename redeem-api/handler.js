@@ -468,6 +468,6 @@ setInterval(async function () {
   } else {
     console.log('Daemon is busy..')
   }
-}, 120000)
+}, 30000)
 
 module.exports.handler = serverless(app);
