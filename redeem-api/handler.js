@@ -429,5 +429,6 @@ setInterval(async function () {
     }
   }
 }, 120000)
-/*
+*/
+
 module.exports.handler = serverless(app);
