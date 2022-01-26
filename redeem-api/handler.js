@@ -308,7 +308,7 @@ app.post("/pending", async function (req, res) {
     try {
       dynamoDbClient.scan({
         TableName: USERS_TABLE,
-        KeyConditionExpression: "verified = :isverified and isEvent = :isevent and redeemed = :isredeemed",
+        FilterExpression: "verified = :isverified and isEvent = :isevent and redeemed = :isredeemed",
         ExpressionAttributeValues: {
           ":isverified": true,
           ":isevent": true,
