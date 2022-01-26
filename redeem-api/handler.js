@@ -226,6 +226,7 @@ app.post("/user", async function (req, res) {
         TableName: USERS_TABLE,
         Item: {
           userId: userId,
+          eventId: "",
           email: email,
           verified: false,
           address: "",
@@ -256,6 +257,7 @@ app.post("/event", async function (req, res) {
       await dynamoDbClient.put({
         TableName: USERS_TABLE,
         Item: {
+          userId: "",
           eventId: eventId,
           email: email,
           verified: false,
