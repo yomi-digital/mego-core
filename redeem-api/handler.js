@@ -458,6 +458,7 @@ app.get("/run-daemon", async function (req, res) {
           await setRedeemed(pending[k])
           console.log("--> NFT sent correctly to " + pending[k].address)
         } catch (e) {
+          console.log(e)
           console.log('Transfer failed')
         }
       }
