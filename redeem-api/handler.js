@@ -6,6 +6,7 @@ const web3 = require("web3");
 const HDWalletProvider = require("@truffle/hdwallet-provider");
 const cors = require('cors');
 
+const BADGE_CONTRACT_API = require('./abi_badge.json')
 const USERS_TABLE = process.env.USERS_TABLE;
 const dynamoDbClientParams = {};
 if (process.env.IS_OFFLINE) {
@@ -246,41 +247,79 @@ app.post("/claim/:eventId", async function (req, res) {
         eventId: req.params.eventId,
       },
     }).promise();
-    if (Item) {
+    if (Item && Item.redeemed === false) {
       const provider = new HDWalletProvider(
-        process.env.DUMMY_MNEMONIC,
+        process.env.PROXY_MNEMONIC,
         process.env.POLYGON_PROVIDER
       );
       const web3Instance = new web3(provider);
       const verified = await web3Instance.eth.personal.ecRecover(req.body.secret, req.body.signature)
       if (verified.toUpperCase() === req.body.address.toUpperCase()) {
-        dynamoDbClient.update({
-          TableName: USERS_TABLE,
-          Key: {
-            eventId: req.params.eventId,
-          },
-          UpdateExpression: "set verified = :v, address = :a, signature = :s",
-          ExpressionAttributeValues: {
-            ":v": true,
-            ":a": req.body.address,
-            ":s": req.body.signature
-          },
-          ReturnValues: "UPDATED_NEW"
-        }, function (err, data) {
-          if (err) {
-            res.status(500).json({ message: "Something goes wrong, please retry." })
-          } else {
-            // TODO: Send the NFT to the user
-          }
-        });
+        const nft_type = req.params.eventId
+        const badgeContract = new web3Instance.eth.Contract(
+          BADGE_CONTRACT_API,
+          process.env.BADGE_CONTRACT, { gasLimit: "10000000" }
+        );
+        const toClaim = await badgeContract.methods.balanceOf(process.env.PROXY_ADDRESS, nft_type).call()
+        if (toClaim > 0) {
+          dynamoDbClient.update({
+            TableName: USERS_TABLE,
+            Key: {
+              eventId: req.params.eventId,
+            },
+            UpdateExpression: "set verified = :v, address = :a, signature = :s",
+            ExpressionAttributeValues: {
+              ":v": true,
+              ":a": req.body.address,
+              ":s": req.body.signature
+            },
+            ReturnValues: "UPDATED_NEW"
+          }, function (err, data) {
+            if (err) {
+              res.status(500).json({ message: "Something goes wrong, please retry." })
+            } else {
+              res.status(200).json({ message: "Your badge is on the way, please check on the website or wait for our e-mail!" });
+            }
+          });
+        } else {
+          res.status(200).json({ error: "No events left to claim." });
+        }
       } else {
         res.status(200).json({ error: "Can't verify your signature, please send valid data." });
       }
     } else {
-      res
-        .status(404)
-        .json({ error: 'Could not find user with provuserIded "userId"' });
+      if (Item.redeemed !== undefined && Item.redeemed === true) {
+        res
+          .status(404)
+          .json({ error: 'You redeemed your NFT yet' });
+      } else {
+        res
+          .status(404)
+          .json({ error: 'Could not find user with provided "eventId"' });
+      }
     }
+  } catch (e) {
+    console.log(e);
+    res.status(500).json({ error: "Something goes wrong, please retry" });
+  }
+});
+
+// Pending events
+app.post("/pending", async function (req, res) {
+  try {
+    dynamoDbClient.get({
+      TableName: USERS_TABLE,
+      Key: {
+        redeemed: false,
+        verified: true
+      },
+    }, function (err, data) {
+      if (err) { 
+        res.status(500).json({ error: "Something goes wrong, please retry", error: err });
+      } else { 
+        res.status(200).json(data);
+      }
+    })
   } catch (e) {
     console.log(e);
     res.status(500).json({ error: "Something goes wrong, please retry" });
@@ -353,5 +392,37 @@ app.use((req, res, next) => {
     error: "Not Found",
   });
 });
+
+/*
+setInterval(async function () {
+  dynamoDbClient.get({
+    TableName: USERS_TABLE,
+    Key: {
+      redeemed: false,
+      verified: true
+    },
+  }, function (err, data) {
+    if (err) { 
+      console.log(err); 
+    } else { 
+      console.log(data); 
+      try {
+        let nonce = await web3Instance.eth.getTransactionCount(process.env.PROXY_ADDRESS)
+        const transfer = await contract.methods
+          .transferBadge(req.body.address, "", nft_type)
+          .send({
+            from: process.env.PROXY_ADDRESS,
+            nonce: nonce,
+            gasPrice: "200000000000",
+            gas: "1000000"
+          })
+        res.status(200).json({ message: "Transfer successful! Your badge is on the way, please check metamask!", transactionHash: transfer.transactionHash });
+      } catch (e) {
+        res.status(500).json({ error: "Transfer failed, please retry." });
+      }
+    }
+  });
+}, 120000)
+*/
 
 module.exports.handler = serverless(app);
