@@ -348,54 +348,6 @@ app.post("/verify/:userId", async function (req, res) {
   }
 });
 
-app.get("/confirm/:userId", async function (req, res) {
-  if (secret === SECRET) {
-    const { Item } = await dynamoDbClient.get({
-      TableName: USERS_TABLE,
-      Key: {
-        userId: req.params.userId,
-      },
-    }).promise();
-
-    try {
-      dynamoDbClient.update({
-        TableName: USERS_TABLE,
-        Key: {
-          userId: req.params.userId,
-        },
-        UpdateExpression: "set redeemed = :r",
-        ExpressionAttributeValues: {
-          ":r": true
-        },
-        ReturnValues: "UPDATED_NEW"
-      }, function (err, data) {
-        if (err) {
-          res.status(200).json({ message: "Something goes wrong, please retry." })
-        } else {
-          mg.messages().send({
-            from: 'PolygonME Verification BOT <noreply@' + DOMAIN + '>',
-            to: Item.email,
-            subject: 'We just sent your reserverd name',
-            html: 'Thank you, we\'ve just sent your name "' + Item.userIt + '" to ' + Item.address
-          }, function (error, body) {
-            if (error) {
-              res.status(200).json({ message: "Something goes wrong, please reply." });
-            } else {
-              res.status(200).json({ message: "Please verify your e-mail now." });
-            }
-          })
-        }
-      });
-      res.status(200).json({ message: "User updated correctly.", error: false });
-    } catch (error) {
-      console.log(error);
-      res.status(500).json({ error: "Could not update redeem state" });
-    }
-  } else {
-    res.status(401).json({ error: "Not authorized" })
-  }
-});
-
 app.use((req, res, next) => {
   return res.status(404).json({
     error: "Not Found",
