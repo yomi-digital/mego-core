@@ -336,7 +336,7 @@ app.post("/pending", async function (req, res) {
   const { secret } = req.body;
   if (secret === SECRET) {
     let pending = await returnPendingEvents()
-    res.send(pending)
+    res.status(200).json(pending)
   } else {
     res.status(500).json({ error: "Unauthorized" });
   }
