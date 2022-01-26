@@ -306,13 +306,13 @@ app.post("/pending", async function (req, res) {
   const { secret } = req.body;
   if (secret === SECRET) {
     try {
-      dynamoDbClient.query({
+      dynamoDbClient.scan({
         TableName: USERS_TABLE,
         KeyConditionExpression: "verified = :isverified and isEvent = :isevent and redeemed = :isredeemed",
         ExpressionAttributeValues: {
-          "isverified": true,
-          "isevent": true,
-          "isredemeed": false
+          ":isverified": true,
+          ":isevent": true,
+          ":isredemeed": false
         }
       }, function (err, data) {
         if (err) {
