@@ -254,10 +254,11 @@ app.post("/event", async function (req, res) {
       res.status(400).json({ error: '"name" must be a string' });
     }
     try {
+      const randomKey = createRedemptionCode(36)
       await dynamoDbClient.put({
         TableName: USERS_TABLE,
         Item: {
-          userId: "-",
+          userId: randomKey,
           eventId: eventId,
           email: email,
           verified: false,
