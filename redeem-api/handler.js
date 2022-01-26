@@ -64,6 +64,7 @@ const dynamoDbClient = new AWS.DynamoDB.DocumentClient(dynamoDbClientParams);
 const SECRET = process.env.SECRET;
 const DOMAIN = process.env.MG_DOMAIN;
 const KEY = process.env.MG_KEY;
+let isSending = false;
 
 const app = express();
 app.use(cors());
@@ -425,14 +426,7 @@ app.post("/verify/:userId", async function (req, res) {
   }
 });
 
-app.use((req, res, next) => {
-  return res.status(404).json({
-    error: "Not Found",
-  });
-});
-
-let isSending = false
-setInterval(async function () {
+app.get("/daemon", async function(req, res){
   console.log('Starting daemon..')
   if (!isSending) {
     isSending = true
@@ -464,10 +458,18 @@ setInterval(async function () {
         console.log('Transfer failed')
       }
     }
+    res.send('Process ended..')
     isSending = false
   } else {
-    console.log('Daemon is busy..')
+    res.send('Daemon is busy..')
   }
-}, 30000)
+})
+
+app.use((req, res, next) => {
+  return res.status(404).json({
+    error: "Not Found",
+  });
+});
+
 
 module.exports.handler = serverless(app);
