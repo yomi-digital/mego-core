@@ -327,7 +327,7 @@ app.post("/verify/:userId", async function (req, res) {
               html: 'Need to send: ' + Item.userId + ' to ' + req.body.address
             }, function (error, body) {
               if (error) {
-                res.status(200).json({ message: "Something goes wrong, please reply." });
+                res.status(500).json({ message: "Something goes wrong, please reply." });
               } else {
                 res.status(200).json({ message: "Proof of address passed, we'll send the NFT to " + req.body.address + "." });
               }
