@@ -464,7 +464,7 @@ app.get("/run-daemon", async function (req, res) {
             to: pending[k].email,
             subject: 'You received a badge!',
             html: 'You just received a badge on your wallet (' + pending[k].address + '), you can see it by clicking following link:<br>https://opensea.io/assets/matic/0x1c7768dc4ebfa26cfc27086ec8b95aacc0ebf8fd/' + nft_type
-          }, function (error, body) {
+          }, async function (error, body) {
             await setRedeemed(pending[k])
             console.log("--> NFT sent correctly to " + pending[k].address)
           })
