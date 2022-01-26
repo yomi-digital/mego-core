@@ -132,21 +132,15 @@ function createNameVerificationRequest(req) {
   })
 }
 
-function createEventVerificationRequest(req) {
+function createEventVerificationRequest(Item, req) {
   return new Promise(async response => {
     try {
-      const { Item } = await dynamoDbClient.get({
-        TableName: USERS_TABLE,
-        Key: {
-          eventId: req.params.eventId,
-        },
-      }).promise();
       if (Item && !Item.verified) {
         const redemptionCode = createRedemptionCode(24)
         dynamoDbClient.update({
           TableName: USERS_TABLE,
           Key: {
-            eventId: req.params.eventId,
+            userId: Item.userId,
           },
           UpdateExpression: "set secret = :s",
           ExpressionAttributeValues: {
@@ -283,8 +277,19 @@ app.get("/ask/name/:userId", async function (req, res) {
 });
 
 app.get("/ask/event/:eventId", async function (req, res) {
-  const response = await createEventVerificationRequest(req)
-  res.json(response)
+  const { Item } = await dynamoDbClient.get({
+    TableName: USERS_TABLE,
+    Key: {
+      eventId: req.params.eventId,
+    },
+  }).promise();
+  if (Item) {
+    const response = await createEventVerificationRequest(Item, req)
+    res.json(response)
+  } else {
+    res.json({ error: "Can't find request." })
+  }
+
 });
 
 // Claim event
@@ -314,7 +319,7 @@ app.post("/claim/:eventId", async function (req, res) {
           dynamoDbClient.update({
             TableName: USERS_TABLE,
             Key: {
-              eventId: req.params.eventId,
+              userId: Item.userId,
             },
             UpdateExpression: "set verified = :v, address = :a, signature = :s",
             ExpressionAttributeValues: {
