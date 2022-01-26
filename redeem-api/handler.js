@@ -149,12 +149,7 @@ function returnPendingEvents() {
           console.log(err)
           response(false);
         } else {
-          console.log("Scan succeeded.");
-          let pending = []
-          data.Items.forEach(function (item) {
-            pending.push(item)
-          });
-          response(pending)
+          response( data.Items)
         }
       })
     } catch (e) {
@@ -186,34 +181,7 @@ function setRedeemed(item) {
   })
 }
 
-app.get("/users/:userId", async function (req, res) {
-  const params = {
-    TableName: USERS_TABLE,
-    Key: {
-      userId: req.params.userId,
-    },
-  };
-
-  try {
-    const { Item } = await dynamoDbClient.get(params).promise();
-    if (Item) {
-      res.json({
-        verified: Item.verified,
-        address: Item.address,
-        redeemed: Item.redeemed,
-        signature: Item.signature
-      });
-    } else {
-      res
-        .status(404)
-        .json({ error: 'Could not find user with id provided.' });
-    }
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ error: "Could not retreive user" });
-  }
-});
-
+// Admin only: insert an user
 app.post("/user", async function (req, res) {
   const { userId, email, secret } = req.body;
   if (secret === SECRET) {
@@ -247,6 +215,7 @@ app.post("/user", async function (req, res) {
   }
 });
 
+// Admin only: insert an event
 app.post("/event", async function (req, res) {
   const { tokenId, email, secret } = req.body;
   if (secret === SECRET) {
@@ -289,11 +258,42 @@ app.post("/event", async function (req, res) {
   }
 });
 
+// Ask to claim a name
 app.get("/ask/name/:userid", async function (req, res) {
   const response = await createVerificationRequest(req.params.userid)
   res.json(response)
 });
 
+// Check if user is claimable
+app.get("/users/:userId", async function (req, res) {
+  const params = {
+    TableName: USERS_TABLE,
+    Key: {
+      userId: req.params.userId,
+    },
+  };
+
+  try {
+    const { Item } = await dynamoDbClient.get(params).promise();
+    if (Item) {
+      res.json({
+        verified: Item.verified,
+        address: Item.address,
+        redeemed: Item.redeemed,
+        signature: Item.signature
+      });
+    } else {
+      res
+        .status(404)
+        .json({ error: 'Could not find user with id provided.' });
+    }
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ error: "Could not retreive user" });
+  }
+});
+
+// Ask claim an event
 app.get("/ask/event/:claimstring", async function (req, res) {
   const response = await createVerificationRequest(req.params.claimstring)
   res.json(response)
@@ -491,11 +491,11 @@ app.get("/run-daemon", async function (req, res) {
   }
 })
 
+// Default response
 app.use((req, res, next) => {
   return res.status(404).json({
     error: "Not Found",
   });
 });
-
 
 module.exports.handler = serverless(app);
