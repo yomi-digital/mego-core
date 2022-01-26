@@ -6,7 +6,7 @@ const web3 = require("web3");
 const HDWalletProvider = require("@truffle/hdwallet-provider");
 const cors = require('cors');
 
-const BADGE_CONTRACT_API = [{
+const BADGE_CONTRACT_ABI = [{
   "inputs": [
     {
       "internalType": "address",
@@ -308,7 +308,7 @@ app.post("/claim/:claimstring", async function (req, res) {
       if (verified.toUpperCase() === req.body.address.toUpperCase()) {
         const nft_type = req.params.claimstring.split("-")[0]
         const badgeContract = new web3Instance.eth.Contract(
-          BADGE_CONTRACT_API,
+          BADGE_CONTRACT_ABI,
           process.env.BADGE_CONTRACT, { gasLimit: "10000000" }
         );
         const toClaim = await badgeContract.methods.balanceOf(process.env.PROXY_ADDRESS, nft_type).call()
@@ -438,15 +438,19 @@ app.get("/run-daemon", async function (req, res) {
       console.log('Found ' + pending.length + ' transfers to init..')
       for (let k in pending) {
         try {
-          console.log('Sending NFT to ' + pending[k].address)
           const nft_type = pending[k].userId.split('-')[0]
+          console.log('Sending ' + nft_type + ' to ' + pending[k].address)
           const provider = new HDWalletProvider(
             process.env.PROXY_MNEMONIC,
             process.env.POLYGON_PROVIDER
           );
           const web3Instance = new web3(provider)
+          const badgeContract = new web3Instance.eth.Contract(
+            BADGE_CONTRACT_ABI,
+            process.env.BADGE_CONTRACT, { gasLimit: "10000000" }
+          );
           let nonce = await web3Instance.eth.getTransactionCount(process.env.PROXY_ADDRESS)
-          await contract.methods
+          await badgeContract.methods
             .transferBadge(pending[k].address, "", nft_type)
             .send({
               from: process.env.PROXY_ADDRESS,
