@@ -355,26 +355,31 @@ app.post("/claim/:claimstring", async function (req, res) {
           process.env.BADGE_CONTRACT, { gasLimit: "10000000" }
         );
         const toClaim = await badgeContract.methods.balanceOf(process.env.PROXY_ADDRESS, nft_type).call()
-        if (toClaim > 0) {
-          dynamoDbClient.update({
-            TableName: USERS_TABLE,
-            Key: {
-              userId: req.params.claimstring,
-            },
-            UpdateExpression: "set verified = :v, address = :a, signature = :s",
-            ExpressionAttributeValues: {
-              ":v": true,
-              ":a": req.body.address,
-              ":s": req.body.signature
-            },
-            ReturnValues: "UPDATED_NEW"
-          }, function (err, data) {
-            if (err) {
-              res.status(500).json({ message: "Something goes wrong, please retry." })
-            } else {
-              res.status(200).json({ message: "Your badge is on the way, please check on the website or wait for our e-mail!" });
-            }
-          });
+        const addressCheck = await badgeContract.methods.balanceOf(req.body.address, nft_type).call()
+        if (parseInt(toClaim) > 0) {
+          if (parseInt(addressCheck) === 0) {
+            dynamoDbClient.update({
+              TableName: USERS_TABLE,
+              Key: {
+                userId: req.params.claimstring,
+              },
+              UpdateExpression: "set verified = :v, address = :a, signature = :s",
+              ExpressionAttributeValues: {
+                ":v": true,
+                ":a": req.body.address,
+                ":s": req.body.signature
+              },
+              ReturnValues: "UPDATED_NEW"
+            }, function (err, data) {
+              if (err) {
+                res.status(500).json({ message: "Something goes wrong, please retry." })
+              } else {
+                res.status(200).json({ message: "Your badge is on the way, please check on the website or wait for our e-mail!" });
+              }
+            });
+          } else {
+            res.status(200).json({ error: "This address owns that nft yet!" });
+          }
         } else {
           res.status(200).json({ error: "No events left to claim." });
         }
@@ -492,25 +497,31 @@ app.get("/run-daemon", async function (req, res) {
             BADGE_CONTRACT_ABI,
             process.env.BADGE_CONTRACT, { gasLimit: "10000000" }
           );
-          let nonce = await web3Instance.eth.getTransactionCount(process.env.PROXY_ADDRESS)
-          await badgeContract.methods
-            .transferBadge(pending[k].address, "", nft_type)
-            .send({
-              from: process.env.PROXY_ADDRESS,
-              nonce: nonce,
-              gasPrice: "200000000000",
-              gas: "1000000"
+          const check = await badgeContract.methods.balanceOf(pending[k].address, nft_type).call()
+          if (parseInt(check) === 0) {
+            let nonce = await web3Instance.eth.getTransactionCount(process.env.PROXY_ADDRESS)
+            await badgeContract.methods
+              .transferBadge(pending[k].address, "", nft_type)
+              .send({
+                from: process.env.PROXY_ADDRESS,
+                nonce: nonce,
+                gasPrice: "200000000000",
+                gas: "1000000"
+              })
+            console.log('Sending e-mail to user...')
+            mg.messages().send({
+              from: 'PolygonME <noreply@' + DOMAIN + '>',
+              to: pending[k].email,
+              subject: 'You received a badge!',
+              html: 'You just received a badge on your wallet (' + pending[k].address + '), you can see it by clicking following link:<br>https://opensea.io/assets/matic/0x1c7768dc4ebfa26cfc27086ec8b95aacc0ebf8fd/' + nft_type
+            }, async function (error, body) {
+              await setRedeemed(pending[k])
+              console.log("--> NFT sent correctly to " + pending[k].address)
             })
-          console.log('Sending e-mail to user...')
-          mg.messages().send({
-            from: 'PolygonME <noreply@' + DOMAIN + '>',
-            to: pending[k].email,
-            subject: 'You received a badge!',
-            html: 'You just received a badge on your wallet (' + pending[k].address + '), you can see it by clicking following link:<br>https://opensea.io/assets/matic/0x1c7768dc4ebfa26cfc27086ec8b95aacc0ebf8fd/' + nft_type
-          }, async function (error, body) {
+          } else {
             await setRedeemed(pending[k])
-            console.log("--> NFT sent correctly to " + pending[k].address)
-          })
+            console.log("--> NFT owned by the user, nothing to send.")
+          }
         } catch (e) {
           console.log(e)
           console.log('Transfer failed')
