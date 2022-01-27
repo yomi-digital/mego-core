@@ -149,7 +149,7 @@ function returnPendingEvents() {
           console.log(err)
           response(false);
         } else {
-          response( data.Items)
+          response(data.Items)
         }
       })
     } catch (e) {
@@ -290,6 +290,38 @@ app.get("/users/:userId", async function (req, res) {
   } catch (error) {
     console.log(error);
     res.status(500).json({ error: "Could not retreive user" });
+  }
+});
+
+// Check if email owns claimable events
+app.get("/claimable/:email", async function (req, res) {
+  try {
+    dynamoDbClient.scan({
+      TableName: USERS_TABLE,
+      FilterExpression: "email = :e and isEvent = :ie",
+      ExpressionAttributeValues: {
+        ":e": req.params.email,
+        ":ie": true
+      }
+    }, function (err, data) {
+      if (err) {
+        console.log(err)
+        res.send({ error: true, message: "Can't fetch events" });
+      } else {
+        let response = []
+        for (let k in data.Items) {
+          let item = data.Items[k]
+          response.push({
+            event: item.userId.split('-')[0],
+            claim: item.userId
+          })
+        }
+        res.send(response)
+      }
+    })
+  } catch (e) {
+    console.log(e);
+    res.send({ error: true, message: "Can't fetch events" });
   }
 });
 
