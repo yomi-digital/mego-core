@@ -298,10 +298,11 @@ app.get("/claimable/:email", async function (req, res) {
   try {
     dynamoDbClient.scan({
       TableName: USERS_TABLE,
-      FilterExpression: "email = :e and isEvent = :ie",
+      FilterExpression: "email = :e and isEvent = :ie and redeemed = :r",
       ExpressionAttributeValues: {
         ":e": req.params.email,
-        ":ie": true
+        ":ie": true,
+        ":r": false
       }
     }, function (err, data) {
       if (err) {
