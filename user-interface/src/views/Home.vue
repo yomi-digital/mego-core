@@ -129,7 +129,7 @@ export default {
       searching: false,
       price: "",
       tld: "",
-      tlds: ["dao", "art", "ibz"],
+      tlds: ["dao", "art", "ibz", "martix"],
       buying: false,
     };
   },

@@ -21,13 +21,16 @@ async function main() {
             NFT_CONTRACT_ABI,
             configs.contract_address, { gasLimit: "5000000" }
         );
-        
+
         try {
             console.log('Trying withdraw MATIC...')
             const nonce = await web3Instance.eth.getTransactionCount(configs.proxy_address)
+            console.log('Using nonce:' + nonce)
             const result = await nftContract.methods
                 .withdrawMatic()
-                .send({ from: configs.proxy_address, gasPrice: "150000000000", nonce: nonce });
+                .send({ from: configs.proxy_address, gasPrice: "150000000000", nonce: nonce }).on('transactionHash', tx => {
+                    console.log('Pending tx is :' + tx)
+                });
             console.log("Balance withdrawn! Transaction: " + result.transactionHash);
             console.log(result)
             process.exit()
