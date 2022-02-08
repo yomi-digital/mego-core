@@ -24,15 +24,13 @@ async function main() {
 
         try {
             console.log('Trying whitelist...')
-            let name = "hamzah-khan"
-            let address = "0xE943398DA56744435f094bc1478C203fB0045e20"
-            let tokenId = 82;
+            let address = "0x4A564813f86f9d8aeC34D45c7750c4686c2f77FB"
+            let tokenId = 260;
             let nonce = await web3Instance.eth.getTransactionCount(configs.proxy_address)
-            console.log('Transferring ' + name + ' using nonce ' + nonce + '...')
+            console.log('Transferring ' + tokenId + ' using nonce ' + nonce + '...')
             let result = await nftContract.methods
                 .safeTransferFrom(configs.proxy_address, address, tokenId).send({ from: configs.proxy_address, gasPrice: "200000000000", nonce: nonce });
-            console.log("Whitelisted! Transaction: " + result.transactionHash);
-            console.log("Minted! Transaction: " + result.transactionHash);
+            console.log("Sent! Transaction: " + result.transactionHash);
             console.log(result)
         } catch (e) {
             console.log(e.message)
