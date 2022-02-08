@@ -28,7 +28,7 @@ async function main() {
         NFT_CONTRACT_ABI,
         configs.contract_address, { gasLimit: "5000000" }
     );
-    let name = 'polygonme'
+    let name = 'apegot'
     console.log('Minting random name: ' + name)
     let price = 10;
     if (name.length > 5 && name.length <= 10) {
@@ -47,7 +47,7 @@ async function main() {
             const nonce = await web3Instance.eth.getTransactionCount(configs.proxy_address)
             console.log('Using nonce: ' + nonce)
             const result = await nftContract.methods
-                .mintName(name, 'dao')
+                .mintName(name, 'ape')
                 .send({ from: configs.proxy_address, value: price.toString() + "000000000000000000", nonce: nonce, gasPrice: "200000000000" }).on('transactionHash', tx => {
                     console.log('Pending transaction: ' + tx)
                 })

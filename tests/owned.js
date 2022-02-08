@@ -20,7 +20,7 @@ async function main() {
     );
 
     try {
-        console.log('Fetching owned NFTs...')
+        console.log('Fetching owned NFTs of ' + configs.owner_address + '...')
         const result = await nftContract.methods
             .tokensOfOwner(configs.owner_address).call();
         console.log(result)
